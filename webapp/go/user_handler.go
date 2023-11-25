@@ -30,9 +30,9 @@ const (
 )
 
 var (
-	fallbackImage = "../img/NoImage.jpg"
-	userCache     = cache.New(1*time.Second, 1*time.Second)
-	iconCache     = cache.New(1*time.Second, 1*time.Second)
+	fallbackImage  = "../img/NoImage.jpg"
+	userCache      = cache.New(1*time.Second, 1*time.Second)
+	iconImageCache = cache.New(1*time.Second, 1*time.Second)
 )
 
 type UserModel struct {
@@ -110,7 +110,7 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	var image []byte
-	if image, found := iconCache.Get(fmt.Sprintf("%d", user.ID)); found {
+	if image, found := iconImageCache.Get(fmt.Sprintf("%d", user.ID)); found {
 		image = image.([]byte)
 	} else {
 		if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
@@ -121,7 +121,7 @@ func getIconHandler(c echo.Context) error {
 			}
 		}
 
-		iconCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
+		iconImageCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
 	}
 
 	if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
@@ -164,8 +164,6 @@ func postIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert new user icon: "+err.Error())
 	}
 
-	iconCache.Delete(fmt.Sprintf("%d", userID))
-
 	iconID, err := rs.LastInsertId()
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get last inserted icon id: "+err.Error())
@@ -175,7 +173,12 @@ func postIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
 
-	userCache.Delete(fmt.Sprintf("%d", userID))
+	iconImageCache.Set(fmt.Sprintf("%d", userID), req.Image, cache.DefaultExpiration)
+	if v, ok := userCache.Get(fmt.Sprintf("%d", userID)); ok {
+		user := v.(User)
+		user.IconHash = fmt.Sprintf("%x", sha256.Sum256(req.Image))
+		userCache.Set(fmt.Sprintf("%d", userID), user, cache.DefaultExpiration)
+	}
 
 	return c.JSON(http.StatusCreated, &PostIconResponse{
 		ID: iconID,
