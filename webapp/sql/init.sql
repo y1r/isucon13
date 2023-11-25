@@ -131,19 +131,19 @@ CREATE TRIGGER IF NOT EXISTS livestream_reports_inc BEFORE INSERT ON livecomment
       SET reports = reports + 1
       WHERE livestream_id = NEW.livestream_id;
 
-CREATE TRIGGER IF NOT EXISTS live_stream_tips_dec BEFORE DELETE ON livecomment_reports
+CREATE TRIGGER IF NOT EXISTS live_stream_reports_dec BEFORE DELETE ON livecomment_reports
   FOR EACH ROW
     UPDATE user_statistics
       SET reports = reports - 1
       WHERE livestream_id = OLD.livestream_id;
 
-CREATE TRIGGER IF NOT EXISTS livestream_reports_inc BEFORE INSERT ON livecomments
+CREATE TRIGGER IF NOT EXISTS livestream_tips_inc BEFORE INSERT ON livecomments
   FOR EACH ROW
     UPDATE livestream_statistics
       SET tips_total = tips_total + NEW.tip, tips_max = GREATER(tips_max, NEW.tip)
       WHERE livestream_id = NEW.livestream_id;
 
-CREATE TRIGGER IF NOT EXISTS livestream_reports_dec BEFORE INSERT ON livecomments
+CREATE TRIGGER IF NOT EXISTS livestream_tips_dec BEFORE INSERT ON livecomments
   FOR EACH ROW
     UPDATE livestream_statistics
       SET tips_total = tips_total - NEW.tip
