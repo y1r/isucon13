@@ -23,3 +23,6 @@ ALTER TABLE `tags` auto_increment = 1;
 ALTER TABLE `livecomments` auto_increment = 1;
 ALTER TABLE `livestreams` auto_increment = 1;
 ALTER TABLE `users` auto_increment = 1;
+
+CREATE INDEX idx_livestream_tags_stream ON livestream_tags (livestream_id);
+CREATE INDEX idx_icon_user ON icons (user_id);
