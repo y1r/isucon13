@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `user_statistics` (
 
 CREATE TRIGGER reactions_inc BEFORE INSERT ON reactions
   FOR EACH ROW
-    INSERT INTO user_statistics (user_id, reactions, comments, tips, views)
+    INSERT INTO user_statistics (user_id, reactions, comments, tips, viewers)
         VALUES (NEW.user_id, 1, 0, 0, 0) AS v
         ON DUPLICATE KEY UPDATE
             reactions = reactions + 1;
@@ -48,7 +48,7 @@ CREATE TRIGGER reactions_dec BEFORE DELETE ON reactions
 
 CREATE TRIGGER viewers_inc BEFORE INSERT ON livestream_viewers_history
   FOR EACH ROW
-    INSERT INTO user_statistics (user_id, reactions, comments, tips, views)
+    INSERT INTO user_statistics (user_id, reactions, comments, tips, viewers)
         VALUES (NEW.user_id, 0, 0, 0, 1) AS v
         ON DUPLICATE KEY UPDATE
             viewers = viewers + 1;
@@ -59,7 +59,7 @@ CREATE TRIGGER viewers_dec BEFORE DELETE ON livestream_viewers_history
 
 CREATE TRIGGER comments_tips_inc BEFORE INSERT ON livecomments
   FOR EACH ROW
-    INSERT INTO user_statistics (user_id, reactions, comments, tips, views)
+    INSERT INTO user_statistics (user_id, reactions, comments, tips, viewers)
         VALUES (NEW.user_id, 0, 1, NEW.tip, 0) AS v
         ON DUPLICATE KEY UPDATE
             comments = comments + 1,
