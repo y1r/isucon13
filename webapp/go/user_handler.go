@@ -110,19 +110,19 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	var image []byte
-	// if image, found := iconImageCache.Get(fmt.Sprintf("%d", user.ID)); found {
-	// 	image = image.([]byte)
-	// } else {
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.File(fallbackImage)
-		} else {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+	if val, found := iconImageCache.Get(fmt.Sprintf("%d", user.ID)); found {
+		image = val.([]byte)
+	} else {
+		if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.File(fallbackImage)
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+			}
 		}
-	}
 
-	iconImageCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
-	// }
+		iconImageCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
+	}
 
 	if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
 		return c.String(http.StatusNotModified, "")
