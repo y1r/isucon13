@@ -218,12 +218,14 @@ func getUserStatisticsHandler(c echo.Context) error {
 			statmodels.Comments != totalLivecomments ||
 			statmodels.Tips != totalTip ||
 			statmodels.Viewers != viewersCount {
-			fmt.Printf("!!!!!!!!!!!!!!!!!NOT MATCH!!!!!!!!!!!!!!! (%d,%d) (%d,%d) (%d,%d) (%d,%d)",
+			fmt.Printf("!!!!!!!!!!!!!!!!!NOT MATCH!!!!!!!!!!!!!!! (%d,%d) (%d,%d) (%d,%d) (%d,%d)\n",
 				statmodels.ReactionsTotal, totalReactions,
 				statmodels.Comments, totalLivecomments,
 				statmodels.Tips, totalTip,
 				statmodels.Viewers, viewersCount,
 			)
+		} else {
+			fmt.Printf("SUCCESS\n")
 		}
 	}
 	//////////////////////////////////////////////////
