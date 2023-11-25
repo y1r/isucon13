@@ -117,6 +117,10 @@ func getIconHandler(c echo.Context) error {
 		}
 	}
 
+	if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
+		return c.String(http.StatusNotModified, "")
+	}
+
 	return c.Blob(http.StatusOK, "image/jpeg", image)
 }
 
