@@ -81,3 +81,12 @@ CREATE TRIGGER comments_tips_dec BEFORE DELETE ON livecomments
     UPDATE user_statistics SET comments = comments - 1, tips = tips - NEW.tip;
   END;
 
+-- added by hand
+-- CREATE INDEX idx_icon_user ON icons (user_id);
+-- CREATE INDEX idx_theme_user ON themes (user_id);
+-- CREATE INDEX idx_livestream_user_id ON livestreams (user_id);
+-- CREATE INDEX idx_reservation_slots ON reservation_slots (start_at, end_at);
+-- CREATE INDEX idx_livestream_tags_stream ON livestream_tags (livestream_id);
+-- CREATE INDEX idx_livecomments ON livecomments (livestream_id, created_at);
+-- CREATE INDEX idx_ng_words ON ng_words (user_id, livestream_id);
+-- CREATE INDEX idx_reactions ON reactions (livestream_id);
