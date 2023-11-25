@@ -67,7 +67,7 @@ CREATE TRIGGER comments_tips_inc BEFORE INSERT ON livecomments
 
 CREATE TRIGGER comments_tips_dec BEFORE DELETE ON livecomments
   FOR EACH ROW
-    UPDATE user_statistics SET comments = comments - 1, tips = tips - NEW.tip;
+    UPDATE user_statistics SET comments = comments - 1, tips = tips - OLD.tip;
 
 -- added by hand
 -- CREATE INDEX idx_icon_user ON icons (user_id);
