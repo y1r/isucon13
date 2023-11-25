@@ -400,6 +400,10 @@ func moderateHandler(c echo.Context) error {
 			}
 		}
 
+		if len(valueStrings) == 0 {
+			return nil
+		}
+
 		query := fmt.Sprintf("DELETE FROM livecomments WHERE id in (%s)", strings.Join(valueStrings, ","))
 		if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
