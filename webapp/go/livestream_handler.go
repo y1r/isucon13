@@ -494,10 +494,10 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		return Livestream{}, err
 	}
 
-	var tags []*Tag
+	var tagmodels []*TagModel
 	if err := tx.SelectContext(
 		ctx,
-		&tags,
+		&tagmodels,
 		`
 		SELECT
 			T.id AS id,
@@ -514,6 +514,17 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		livestreamModel.ID,
 	); err != nil {
 		return Livestream{}, err
+	}
+
+	tags := make([]Tag, len(tagmodels))
+	for i, _ := range tagmodels {
+		if tagmodels[i] == nil {
+			return Livestream{}, err
+		}
+		tags[i] = Tag{
+			ID:   tagmodels[i].ID,
+			Name: tagmodels[i].Name,
+		}
 	}
 
 	livestream := Livestream{
