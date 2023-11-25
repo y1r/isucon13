@@ -494,7 +494,7 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		return Livestream{}, err
 	}
 
-	var tags []Tag
+	var tags []*Tag
 	if err := tx.SelectContext(
 		ctx,
 		&tags,
