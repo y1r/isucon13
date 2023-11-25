@@ -125,7 +125,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 		}
 		sort.Sort(ranking)
 
-		*AllRanking = ranking
+		AllRanking = &ranking
 	}
 	var rank int64 = 1
 	for i := len(*AllRanking) - 1; i >= 0; i-- {
