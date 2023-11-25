@@ -21,6 +21,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.4 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	golang.org/x/net v0.12.0 // indirect

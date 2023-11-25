@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +17,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
+	cache "github.com/patrickmn/go-cache"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -31,7 +31,8 @@ const (
 
 var (
 	fallbackImage = "../img/NoImage.jpg"
-	userCache     = sync.Map{}
+	userCache     = cache.New(1*time.Second, 1*time.Second)
+	imageCache    = cache.New(1*time.Second, 1*time.Second)
 )
 
 type UserModel struct {
@@ -109,12 +110,18 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	var image []byte
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.File(fallbackImage)
-		} else {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+	if image, found := imageCache.Get(fmt.Sprintf("%d", user.ID)); found {
+		image = image.([]byte)
+	} else {
+		if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.File(fallbackImage)
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+			}
 		}
+
+		imageCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
 	}
 
 	if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
@@ -166,7 +173,7 @@ func postIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
 
-	userCache.Delete(userID)
+	userCache.Delete(fmt.Sprintf("%d", userID))
 
 	return c.JSON(http.StatusCreated, &PostIconResponse{
 		ID: iconID,
@@ -409,7 +416,7 @@ func verifyUserSession(c echo.Context) error {
 }
 
 func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (User, error) {
-	if u, ok := userCache.Load(userModel.ID); ok {
+	if u, ok := userCache.Get(fmt.Sprintf("%d", userModel.ID)); ok {
 		return u.(User), nil
 	}
 
@@ -442,7 +449,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 		IconHash: fmt.Sprintf("%x", iconHash),
 	}
 
-	userCache.Store(userModel.ID, user)
+	userCache.Add(fmt.Sprintf("%d", userModel.ID), user, cache.DefaultExpiration)
 
 	return user, nil
 }
