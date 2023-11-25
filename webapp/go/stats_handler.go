@@ -113,7 +113,7 @@ func getUserStatisticsHandler(c echo.Context) error {
 		`SELECT COUNT(*)+1 
 		FROM user_statistics
 		WHERE (reactions_total + tips > ?)
-		      OR (reactions_total + tips = ? AND U.name < ?)`,
+		      OR (reactions_total + tips = ? AND user_name < ?)`,
 		statmodels.ReactionsTotal+statmodels.Tips,
 		statmodels.ReactionsTotal+statmodels.Tips,
 		statmodels.UserName,
