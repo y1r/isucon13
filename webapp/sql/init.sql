@@ -34,40 +34,41 @@ CREATE TABLE IF NOT EXISTS `user_statistics` (
   `tips` BIGINT NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin; -- おまじない
 
+TRUNCATE TABLE user_statistics;
 
-CREATE TRIGGER reactions_inc BEFORE INSERT ON reactions
+CREATE TRIGGER IF NOT EXISTS reactions_inc BEFORE INSERT ON reactions
   FOR EACH ROW
     INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
         VALUES (NEW.user_id, 1, 0, 0, 0) AS v
         ON DUPLICATE KEY UPDATE
-            reactions_total = reactions_total + 1;
+            user_statistics.reactions_total = user_statistics.reactions_total + 1;
 
-CREATE TRIGGER reactions_dec BEFORE DELETE ON reactions
+CREATE TRIGGER IF NOT EXISTS reactions_dec BEFORE DELETE ON reactions
   FOR EACH ROW
-    UPDATE user_statistics SET reactions_total = reactions_total - 1;
+    UPDATE user_statistics SET user_statistics.reactions_total = user_statistics.reactions_total - 1;
 
-CREATE TRIGGER viewers_inc BEFORE INSERT ON livestream_viewers_history
+CREATE TRIGGER IF NOT EXISTS viewers_inc BEFORE INSERT ON livestream_viewers_history
   FOR EACH ROW
     INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
         VALUES (NEW.user_id, 0, 0, 0, 1) AS v
         ON DUPLICATE KEY UPDATE
-            viewers = viewers + 1;
+            user_statistics.viewers = user_statistics.viewers + 1;
 
-CREATE TRIGGER viewers_dec BEFORE DELETE ON livestream_viewers_history
+CREATE TRIGGER IF NOT EXISTS viewers_dec BEFORE DELETE ON livestream_viewers_history
   FOR EACH ROW
-    UPDATE user_statistics SET viewers = viewers - 1;
+    UPDATE user_statistics SET user_statistics.viewers = user_statistics.viewers - 1;
 
-CREATE TRIGGER comments_tips_inc BEFORE INSERT ON livecomments
+CREATE TRIGGER IF NOT EXISTS comments_tips_inc BEFORE INSERT ON livecomments
   FOR EACH ROW
     INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
         VALUES (NEW.user_id, 0, 1, NEW.tip, 0) AS v
         ON DUPLICATE KEY UPDATE
-            comments = comments + 1,
-            tips = tips + NEW.tip;
+            user_statistics.comments = user_statistics.comments + 1,
+            user_statistics.tips = user_statistics.tips + NEW.tip;
 
-CREATE TRIGGER comments_tips_dec BEFORE DELETE ON livecomments
+CREATE TRIGGER IF NOT EXISTS comments_tips_dec BEFORE DELETE ON livecomments
   FOR EACH ROW
-    UPDATE user_statistics SET comments = comments - 1, tips = tips - OLD.tip;
+    UPDATE user_statistics SET user_statistics.comments = user_statistics.comments - 1, user_statistics.tips = user_statistics.tips - OLD.tip;
 
 -- added by hand
 -- CREATE INDEX idx_icon_user ON icons (user_id);
