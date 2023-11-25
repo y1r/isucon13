@@ -203,7 +203,7 @@ func searchLivestreamsHandler(c echo.Context) error {
 		}
 	} else {
 		// 検索条件なし
-		query := `SELECT * FROM livestreams ORDER BY id DESC`
+		query := `SELECT * FROM livestreams WHERE end_at > NOW() ORDER BY id DESC`
 		if c.QueryParam("limit") != "" {
 			limit, err := strconv.Atoi(c.QueryParam("limit"))
 			if err != nil {
