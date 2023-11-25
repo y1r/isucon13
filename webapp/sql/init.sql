@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS `user_statistics` (
   `tips` BIGINT NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin; -- おまじない
 
+-- added by hand
+-- CREATE INDEX idx_user_statistics ON user_statistics (user_name);
 TRUNCATE TABLE user_statistics;
 
 -- ユーザー追加時に統計情報のテーブルも作る
