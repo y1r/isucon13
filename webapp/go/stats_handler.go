@@ -59,6 +59,8 @@ func (r UserRanking) Less(i, j int) bool {
 	}
 }
 
+var AllRanking *UserRanking
+
 func getUserStatisticsHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -85,7 +87,8 @@ func getUserStatisticsHandler(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
 		}
 	}
-	/*
+
+	if AllRanking == nil {
 		// ランク算出
 		var users []*UserModel
 		if err := tx.SelectContext(ctx, &users, "SELECT * FROM users"); err != nil {
@@ -122,16 +125,16 @@ func getUserStatisticsHandler(c echo.Context) error {
 		}
 		sort.Sort(ranking)
 
-		var rank int64 = 1
-		for i := len(ranking) - 1; i >= 0; i-- {
-			entry := ranking[i]
-			if entry.Username == username {
-				break
-			}
-			rank++
-		}
-	*/
+		*AllRanking = ranking
+	}
 	var rank int64 = 1
+	for i := len(*AllRanking) - 1; i >= 0; i-- {
+		entry := (*AllRanking)[i]
+		if entry.Username == username {
+			break
+		}
+		rank++
+	}
 
 	// リアクション数
 	var totalReactions int64
