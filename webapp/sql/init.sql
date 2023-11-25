@@ -28,6 +28,7 @@ ALTER TABLE `users` auto_increment = 1;
 -- ユーザーの統計情報
 CREATE TABLE IF NOT EXISTS `user_statistics` (
   `user_id` BIGINT NOT NULL PRIMARY KEY,
+  `user_name` VARCHAR(255) NOT NULL,
   `reactions_total` BIGINT NOT NULL,
   `viewers` BIGINT NOT NULL,
   `comments` BIGINT NOT NULL,
@@ -39,8 +40,8 @@ TRUNCATE TABLE user_statistics;
 -- ユーザー追加時に統計情報のテーブルも作る
 CREATE TRIGGER IF NOT EXISTS add_users_to_statistics BEFORE INSERT ON users
   FOR EACH ROW
-    INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
-        VALUES (NEW.id, 0, 0, 0, 0);
+    INSERT INTO user_statistics (user_id, user_name, reactions_total, comments, tips, viewers)
+        VALUES (NEW.id, NEW.name 0, 0, 0, 0);
 
 CREATE TRIGGER IF NOT EXISTS reactions_inc BEFORE INSERT ON reactions
   FOR EACH ROW
