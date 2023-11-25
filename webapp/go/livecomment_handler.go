@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -381,36 +382,41 @@ func moderateHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get last inserted NG word id: "+err.Error())
 	}
 
-	var ngwords []*NGWord
-	if err := tx.SelectContext(ctx, &ngwords, "SELECT * FROM ng_words WHERE livestream_id = ?", livestreamID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get NG words: "+err.Error())
+	// 今回追加したNGワードに関する過去の全投稿を削除する
+	var livecomments []*LivecommentModel
+	if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments WHERE livestream_id = ?", livestreamID); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
 	}
 
-	// NGワードにヒットする過去の投稿も全削除する
-	for _, ngword := range ngwords {
-		// ライブコメント一覧取得
-		var livecomments []*LivecommentModel
-		if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments"); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
-		}
+	// 削除対象の算出 with bulkDelete
+	bulkDelete := func() error {
+		valueStrings := []string{}
+		valueArgs := [](interface{}){}
 
 		for _, livecomment := range livecomments {
-			query := `
-			DELETE FROM livecomments
-			WHERE
-			id = ? AND
-			livestream_id = ? AND
-			(SELECT COUNT(*)
-			FROM
-			(SELECT ? AS text) AS texts
-			INNER JOIN
-			(SELECT CONCAT('%', ?, '%')	AS pattern) AS patterns
-			ON texts.text LIKE patterns.pattern) >= 1;
-			`
-			if _, err := tx.ExecContext(ctx, query, livecomment.ID, livestreamID, livecomment.Comment, ngword.Word); err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
+			if strings.Contains(livecomment.Comment, req.NGWord) {
+				valueStrings = append(valueStrings, "?")
+				valueArgs = append(valueArgs, livecomment.ID)
 			}
 		}
+
+		if len(valueStrings) == 0 {
+			return nil
+		}
+
+		query := fmt.Sprintf("DELETE FROM livecomments WHERE id in (%s)", strings.Join(valueStrings, ","))
+		if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
+		}
+
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err = bulkDelete(); err != nil {
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {
