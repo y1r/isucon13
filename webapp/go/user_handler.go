@@ -30,8 +30,9 @@ const (
 )
 
 var (
-	fallbackImage = "../img/NoImage.jpg"
-	userCache     = sync.Map{}
+	fallbackImage  = "../img/NoImage.jpg"
+	userCache      = sync.Map{}
+	iconImageCache = sync.Map{}
 )
 
 type UserModel struct {
@@ -93,7 +94,6 @@ func getIconHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
 	username := c.Param("username")
-
 	tx, err := dbConn.BeginTxx(ctx, nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
@@ -108,16 +108,32 @@ func getIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
 	}
 
-	var image []byte
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.File(fallbackImage)
-		} else {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+	if v, ok := iconImageCache.Load(user.ID); ok {
+		image := v.([]byte)
+		if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
+			return c.String(http.StatusNotModified, "")
 		}
-	}
+		return c.Blob(http.StatusOK, "image/jpeg", image)
+	} else {
+		var image []byte
+		if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.File(fallbackImage)
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+			}
+		}
 
-	return c.Blob(http.StatusOK, "image/jpeg", image)
+		if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
+			return c.String(http.StatusNotModified, "")
+		}
+
+		go func() {
+			iconImageCache.Store(user.ID, image)
+		}()
+
+		return c.Blob(http.StatusOK, "image/jpeg", image)
+	}
 }
 
 func postIconHandler(c echo.Context) error {
@@ -162,7 +178,15 @@ func postIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
 
-	userCache.Delete(userID)
+	go func() {
+		iconImageCache.Store(userID, req.Image)
+		// userCache.Delete(userID)
+		if v, ok := userCache.Load(userID); ok {
+			user := v.(User)
+			user.IconHash = fmt.Sprintf("%x", sha256.Sum256(req.Image))
+			userCache.Store(userID, user)
+		}
+	}()
 
 	return c.JSON(http.StatusCreated, &PostIconResponse{
 		ID: iconID,
