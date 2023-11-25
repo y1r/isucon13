@@ -216,8 +216,8 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		&rank,
 		`SELECT COUNT(*)+1 
 		FROM livestream_statistics
-		WHERE (reactions_total + tips > ?)
-		      OR (reactions_total + tips = ? AND livestream_id > ?)`,
+		WHERE (reactions_total + tips_total > ?)
+		      OR (reactions_total + tips_total = ? AND livestream_id > ?)`,
 		statmodels.ReactionsTotal+statmodels.TipsTotal,
 		statmodels.ReactionsTotal+statmodels.TipsTotal,
 		livestreamID,
