@@ -40,7 +40,7 @@ TRUNCATE TABLE user_statistics;
 CREATE TRIGGER IF NOT EXISTS add_users_to_statistics BEFORE INSERT ON users
   FOR EACH ROW
     INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
-        VALUES (NEW.user_id, 0, 0, 0, 0);
+        VALUES (NEW.id, 0, 0, 0, 0);
 
 CREATE TRIGGER IF NOT EXISTS reactions_inc BEFORE INSERT ON reactions
   FOR EACH ROW
