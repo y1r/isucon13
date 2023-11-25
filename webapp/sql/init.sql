@@ -23,3 +23,12 @@ ALTER TABLE `tags` auto_increment = 1;
 ALTER TABLE `livecomments` auto_increment = 1;
 ALTER TABLE `livestreams` auto_increment = 1;
 ALTER TABLE `users` auto_increment = 1;
+
+-- added by hand
+-- CREATE INDEX idx_icon_user ON icons (user_id);
+-- CREATE INDEX idx_theme_user ON themes (user_id);
+-- CREATE INDEX idx_livestream_user_id ON livestreams (user_id);
+-- CREATE INDEX idx_reservation_slots ON reservation_slots (start_at, end_at);
+-- CREATE INDEX idx_livestream_tags_stream ON livestream_tags (livestream_id);
+-- CREATE INDEX idx_livecomments ON livecomments (livestream_id, created_at);
+-- CREATE INDEX idx_reactions ON reactions (livestream_id);
