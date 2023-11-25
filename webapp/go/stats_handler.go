@@ -79,10 +79,11 @@ func getUserStatisticsHandler(c echo.Context) error {
 	defer tx.Rollback()
 
 	type StatisticsModel struct {
-		ReactionsTotal int64 `db:"reactions_total"`
-		Comments       int64 `db:"comments"`
-		Tips           int64 `db:"tips"`
-		Viewers        int64 `db:"viewers"`
+		UserName       string `db:"user_name"`
+		ReactionsTotal int64  `db:"reactions_total"`
+		Comments       int64  `db:"comments"`
+		Tips           int64  `db:"tips"`
+		Viewers        int64  `db:"viewers"`
 	}
 
 	var statmodels StatisticsModel
@@ -91,16 +92,14 @@ func getUserStatisticsHandler(c echo.Context) error {
 		&statmodels,
 		`
 		SELECT
-		  US.reactions_total AS reactions_total,
-		  US.comments AS comments,
-		  US.tips AS tips,
-		  US.viewers AS viewers
+		  user_name,
+		  reactions_total,
+		  comments,
+		  tips,
+		  viewers
 		FROM
-		  users AS U
-		  INNER JOIN
-		  user_statistics AS US
-		  ON U.id = US.user_id
-		WHERE U.name = ?
+		  user_statistics
+		WHERE user_name = ?
 		`,
 		username,
 	); err != nil {
@@ -111,8 +110,13 @@ func getUserStatisticsHandler(c echo.Context) error {
 	if err := tx.GetContext(
 		ctx,
 		&rank,
-		`SELECT COUNT(*)+1 FROM user_statistics WHERE reactions_total + tips > ?`,
+		`SELECT COUNT(*)+1 
+		FROM user_statistics
+		WHERE (reactions_total + tips > ?)
+		      OR (reactions_total + tips = ? AND U.name < ?)`,
 		statmodels.ReactionsTotal+statmodels.Tips,
+		statmodels.ReactionsTotal+statmodels.Tips,
+		statmodels.UserName,
 	); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "fail (rank): "+err.Error())
 	}
