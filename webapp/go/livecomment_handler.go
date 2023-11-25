@@ -395,12 +395,12 @@ func moderateHandler(c echo.Context) error {
 
 		for _, livecomment := range livecomments {
 			if strings.Contains(livecomment.Comment, req.NGWord) {
-				valueStrings = append(valueStrings, "(?)")
+				valueStrings = append(valueStrings, "?")
 				valueArgs = append(valueArgs, livecomment.ID)
 			}
 		}
 
-		query := fmt.Sprintf("DELETE FROM livecomments WHERE id in %s", strings.Join(valueStrings, ","))
+		query := fmt.Sprintf("DELETE FROM livecomments WHERE id in (%s)", strings.Join(valueStrings, ","))
 		if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
 		}
