@@ -1,0 +1,13 @@
+  - name: install packages
+    apt:
+      name:
+        - git
+        - vim
+        - wget
+        - tmux
+        - htop
+        - vnstat
+        - bash-completion
+        - redis-server
+        - unzip
+        - percona-toolkit

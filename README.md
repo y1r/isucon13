@@ -1,0 +1,10 @@
+- update inventory
+- generate key
+  - `ssh-keygen -f $(PATH_TO_GITHUB_DEPLOY_KEY)`
+- upload deploy key to GitHub
+- ssh -i provisioning/github -o IdentitiesOnly=yes git@github.com
+- execute playbooks
+  - dry-run:
+    - `ansible-playbook --diff provisioning/step1.yml --check -i inventory`
+  - run:
+    - `ansible-playbook provisioning/step1.yml -i inventory`

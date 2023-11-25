@@ -1,0 +1,55 @@
+- hosts: all
+  become: yes
+
+  tasks:
+    - ansible.builtin.import_tasks:
+        packages.yml
+
+        #- ansible.builtin.import_tasks:
+        #backup.yml
+
+    - ansible.builtin.import_tasks:
+        github.yml
+
+    - name: download and extract kataribe
+      unarchive:
+        src: https://github.com/matsuu/kataribe/releases/download/v0.4.3/kataribe-v0.4.3_linux_amd64.zip
+        dest: "/usr/bin"
+        remote_src: yes
+
+    - name: create kataribe config
+      shell: "kataribe -generate"
+      args:
+        chdir: "/home/isucon"
+      become: yes
+      become_user: isucon
+
+    - name: download and extract notify_slack
+      unarchive:
+        src: https://github.com/catatsuy/notify_slack/releases/download/v0.4.14/notify_slack-linux-amd64.tar.gz
+        dest: "/usr/bin"
+        remote_src: yes
+
+    - name: place notify_slack.toml
+      copy:
+        src: notify_slack.toml
+        dest: /home/isucon/.notify_slack.toml
+        owner: isucon
+
+    - name: place slowlog_prepare.sh
+      copy:
+        src: slowlog_prepare.sh
+        dest: /home/isucon/slowlog_prepare.sh
+        owner: isucon
+
+    - name: place slowlog_print.sh
+      copy:
+        src: slowlog_print.sh
+        dest: /home/isucon/slowlog_print.sh
+        owner: isucon
+
+    - name: place deploy.sh
+      copy:
+        src: deploy.sh
+        dest: /home/isucon/deploy.sh
+        owner: isucon
