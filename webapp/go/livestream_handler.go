@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -66,6 +67,10 @@ type ReservationSlotModel struct {
 	StartAt int64 `db:"start_at" json:"start_at"`
 	EndAt   int64 `db:"end_at" json:"end_at"`
 }
+
+var (
+	livestreamTagModelsCache = sync.Map{}
+)
 
 func reserveLivestreamHandler(c echo.Context) error {
 	ctx := c.Request().Context()
@@ -491,10 +496,13 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 	}
 
 	var tagmodels []*TagModel
-	if err := tx.SelectContext(
-		ctx,
-		&tagmodels,
-		`
+	if v, ok := livestreamTagModelsCache.Load(livestreamModel.ID); ok {
+		tagmodels = v.([]*TagModel)
+	} else {
+		if err := tx.SelectContext(
+			ctx,
+			&tagmodels,
+			`
 		SELECT
 			T.id AS id,
 			T.name AS name
@@ -507,9 +515,12 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		WHERE
 			LT.livestream_id = ?
 		`,
-		livestreamModel.ID,
-	); err != nil {
-		return Livestream{}, err
+			livestreamModel.ID,
+		); err != nil {
+			return Livestream{}, err
+		}
+
+		livestreamTagModelsCache.Store(livestreamModel.ID, tagmodels)
 	}
 
 	tags := make([]Tag, len(tagmodels))
