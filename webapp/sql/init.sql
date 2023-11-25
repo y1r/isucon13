@@ -81,6 +81,75 @@ CREATE TRIGGER IF NOT EXISTS comments_tips_dec BEFORE DELETE ON livecomments
       SET comments = comments - 1, tips = tips - OLD.tip
       WHERE user_id IN (SELECT user_id FROM livestreams WHERE id = OLD.livestream_id);
 
+
+
+-- Livestreamの統計情報
+CREATE TABLE IF NOT EXISTS `livestream_statistics` (
+  `livestream_id` BIGINT NOT NULL PRIMARY KEY,
+  `reactions_total` BIGINT NOT NULL,
+  `viewers` BIGINT NOT NULL,
+  `reports` BIGINT NOT NULL,
+  `tips_total` BIGINT NOT NULL
+  `tips_max` BIGINT NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin; -- おまじない
+
+TRUNCATE TABLE livestream_statistics;
+
+-- livestream追加時に統計情報のテーブルも作る
+CREATE TRIGGER IF NOT EXISTS add_livestream_to_statistics AFTER INSERT ON livestreams
+  FOR EACH ROW
+    INSERT INTO livestream_statistics (livestream_id, reactions_total, veiwers, reports, tips_total, tips_max)
+        VALUES (NEW.id, NEW.name, 0, 0, 0, 0);
+
+CREATE TRIGGER IF NOT EXISTS livestream_reactions_inc BEFORE INSERT ON reactions
+  FOR EACH ROW
+    UPDATE livestream_statistics
+      SET reactions_total = reactions_total + 1
+      WHERE livestream_id = NEW.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS live_stream_reactions_dec BEFORE DELETE ON reactions
+  FOR EACH ROW
+    UPDATE livestream_statistics
+      SET reactions_total = reactions_total - 1
+      WHERE livestream_id = OLD.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS livestream_viewers_inc BEFORE INSERT ON livestream_viewers_history
+  FOR EACH ROW
+    UPDATE livestream_statistics
+      SET viewers = viewers + 1
+      WHERE livestream_id = NEW.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS live_stream_viewers_dec BEFORE DELETE ON livestream_viewers_history
+  FOR EACH ROW
+    UPDATE user_statistics
+      SET viewers = viewers - 1
+      WHERE livestream_id = OLD.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS livestream_reports_inc BEFORE INSERT ON livecomment_reports
+  FOR EACH ROW
+    UPDATE livestream_statistics
+      SET reports = reports + 1
+      WHERE livestream_id = NEW.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS live_stream_tips_dec BEFORE DELETE ON livecomment_reports
+  FOR EACH ROW
+    UPDATE user_statistics
+      SET reports = reports - 1
+      WHERE livestream_id = OLD.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS livestream_reports_inc BEFORE INSERT ON livecomments
+  FOR EACH ROW
+    UPDATE livestream_statistics
+      SET tips_total = tips_total + NEW.tip, tips_max = GREATER(tips_max, NEW.tip)
+      WHERE livestream_id = NEW.livestream_id;
+
+CREATE TRIGGER IF NOT EXISTS livestream_reports_dec BEFORE INSERT ON livecomments
+  FOR EACH ROW
+    UPDATE livestream_statistics
+      SET tips_total = tips_total - NEW.tip
+      WHERE livestream_id = OLD.livestream_id;
+
+
 -- added by hand
 -- CREATE INDEX idx_icon_user ON icons (user_id);
 -- CREATE INDEX idx_theme_user ON themes (user_id);
