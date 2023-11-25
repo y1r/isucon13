@@ -32,7 +32,7 @@ const (
 var (
 	fallbackImage = "../img/NoImage.jpg"
 	userCache     = cache.New(1*time.Second, 1*time.Second)
-	imageCache    = cache.New(1*time.Second, 1*time.Second)
+	iconCache     = cache.New(1*time.Second, 1*time.Second)
 )
 
 type UserModel struct {
@@ -110,7 +110,7 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	var image []byte
-	if image, found := imageCache.Get(fmt.Sprintf("%d", user.ID)); found {
+	if image, found := iconCache.Get(fmt.Sprintf("%d", user.ID)); found {
 		image = image.([]byte)
 	} else {
 		if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
@@ -121,7 +121,7 @@ func getIconHandler(c echo.Context) error {
 			}
 		}
 
-		imageCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
+		iconCache.Set(fmt.Sprintf("%d", user.ID), image, cache.DefaultExpiration)
 	}
 
 	if c.Request().Header.Get("If-None-Match") == fmt.Sprintf("%x", sha256.Sum256(image)) {
@@ -163,6 +163,8 @@ func postIconHandler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert new user icon: "+err.Error())
 	}
+
+	iconCache.Delete(fmt.Sprintf("%d", userID))
 
 	iconID, err := rs.LastInsertId()
 	if err != nil {
