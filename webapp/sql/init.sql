@@ -36,39 +36,67 @@ CREATE TABLE IF NOT EXISTS `user_statistics` (
 
 TRUNCATE TABLE user_statistics;
 
-CREATE TRIGGER IF NOT EXISTS reactions_inc BEFORE INSERT ON reactions
+-- ユーザー追加時に統計情報のテーブルも作る
+CREATE TRIGGER IF NOT EXISTS add_users_to_statistics BEFORE INSERT ON users
   FOR EACH ROW
     INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
-        VALUES (NEW.user_id, 1, 0, 0, 0) AS v
-        ON DUPLICATE KEY UPDATE
-            user_statistics.reactions_total = user_statistics.reactions_total + 1;
+        VALUES (NEW.user_id, 0, 0, 0, 0);
+
+CREATE TRIGGER IF NOT EXISTS reactions_inc BEFORE INSERT ON reactions
+  FOR EACH ROW
+    UPDATE
+      SET US.reactions_total = US.reactions_total + 1
+      FROM livestreams AS L
+           INNER JOIN user_statistics AS US
+           ON L.user_id = US.user_id
+      WHERE L.id = NEW.livestream_id;
 
 CREATE TRIGGER IF NOT EXISTS reactions_dec BEFORE DELETE ON reactions
   FOR EACH ROW
-    UPDATE user_statistics SET user_statistics.reactions_total = user_statistics.reactions_total - 1;
+    UPDATE
+      SET US.reactions_total = US.reactions_total - 1
+      FROM livestreams AS L
+           INNER JOIN user_statistics AS US
+           ON L.user_id = US.user_id
+      WHERE L.id = OLD.livestream_id;
 
 CREATE TRIGGER IF NOT EXISTS viewers_inc BEFORE INSERT ON livestream_viewers_history
   FOR EACH ROW
-    INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
-        VALUES (NEW.user_id, 0, 0, 0, 1) AS v
-        ON DUPLICATE KEY UPDATE
-            user_statistics.viewers = user_statistics.viewers + 1;
+    UPDATE
+      SET US.viewers = US.viewers + 1
+      FROM livestreams AS L
+           INNER JOIN user_statistics AS US
+           ON L.user_id = US.user_id
+      WHERE L.id = NEW.livestream_id;
 
 CREATE TRIGGER IF NOT EXISTS viewers_dec BEFORE DELETE ON livestream_viewers_history
   FOR EACH ROW
-    UPDATE user_statistics SET user_statistics.viewers = user_statistics.viewers - 1;
+    UPDATE
+      SET US.viewers = US.viewers - 1
+      FROM livestreams AS L
+           INNER JOIN user_statistics AS US
+           ON L.user_id = US.user_id
+      WHERE L.id = OLD.livestream_id;
 
 CREATE TRIGGER IF NOT EXISTS comments_tips_inc BEFORE INSERT ON livecomments
   FOR EACH ROW
-    INSERT INTO user_statistics (user_id, reactions_total, comments, tips, viewers)
-        VALUES (NEW.user_id, 0, 1, NEW.tip, 0) AS v
-        ON DUPLICATE KEY UPDATE
-            user_statistics.comments = user_statistics.comments + 1,
-            user_statistics.tips = user_statistics.tips + NEW.tip;
+    UPDATE
+      SET US.comments = US.comments + 1,
+          US.tips = US.tips + NEW.tip
+      FROM livestreams AS L
+           INNER JOIN user_statistics AS US
+           ON L.user_id = US.user_id
+      WHERE L.id = NEW.livestream_id;
 
 CREATE TRIGGER IF NOT EXISTS comments_tips_dec BEFORE DELETE ON livecomments
   FOR EACH ROW
-    UPDATE user_statistics SET user_statistics.comments = user_statistics.comments - 1, user_statistics.tips = user_statistics.tips - OLD.tip;
+    UPDATE
+      SET US.comments = US.comments - 1,
+          US.tips = US.tips - OLD.tip
+      FROM livestreams AS L
+           INNER JOIN user_statistics AS US
+           ON L.user_id = US.user_id
+      WHERE L.id = OLD.livestream_id;
 
 -- added by hand
 -- CREATE INDEX idx_icon_user ON icons (user_id);
