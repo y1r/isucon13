@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -115,6 +116,117 @@ func getUserStatisticsHandler(c echo.Context) error {
 	); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "fail (rank): "+err.Error())
 	}
+
+	//////////////////////////////////////////////////
+	{
+		var user UserModel
+		if err := tx.GetContext(ctx, &user, "SELECT * FROM users WHERE name = ?", username); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return echo.NewHTTPError(http.StatusBadRequest, "not found user that has the given username")
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
+			}
+		}
+
+		// ランク算出
+		var users []*UserModel
+		if err := tx.SelectContext(ctx, &users, "SELECT * FROM users"); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get users: "+err.Error())
+		}
+
+		var ranking UserRanking
+		for _, user := range users {
+			var reactions int64
+			query := `
+		SELECT COUNT(*) FROM users u
+		INNER JOIN livestreams l ON l.user_id = u.id
+		INNER JOIN reactions r ON r.livestream_id = l.id
+		WHERE u.id = ?`
+			if err := tx.GetContext(ctx, &reactions, query, user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to count reactions: "+err.Error())
+			}
+
+			var tips int64
+			query = `
+		SELECT IFNULL(SUM(l2.tip), 0) FROM users u
+		INNER JOIN livestreams l ON l.user_id = u.id	
+		INNER JOIN livecomments l2 ON l2.livestream_id = l.id
+		WHERE u.id = ?`
+			if err := tx.GetContext(ctx, &tips, query, user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to count tips: "+err.Error())
+			}
+
+			score := reactions + tips
+			ranking = append(ranking, UserRankingEntry{
+				Username: user.Name,
+				Score:    score,
+			})
+		}
+		sort.Sort(ranking)
+
+		var rank int64 = 1
+		for i := len(ranking) - 1; i >= 0; i-- {
+			entry := ranking[i]
+			if entry.Username == username {
+				break
+			}
+			rank++
+		}
+
+		// リアクション数
+		var totalReactions int64
+		query := `SELECT COUNT(*) FROM users u 
+    INNER JOIN livestreams l ON l.user_id = u.id 
+    INNER JOIN reactions r ON r.livestream_id = l.id
+    WHERE u.name = ?
+	`
+		if err := tx.GetContext(ctx, &totalReactions, query, username); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to count total reactions: "+err.Error())
+		}
+
+		// ライブコメント数、チップ合計
+		var totalLivecomments int64
+		var totalTip int64
+		var livestreams []*LivestreamModel
+		if err := tx.SelectContext(ctx, &livestreams, "SELECT * FROM livestreams WHERE user_id = ?", user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
+		}
+
+		for _, livestream := range livestreams {
+			var livecomments []*LivecommentModel
+			if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments WHERE livestream_id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
+			}
+
+			for _, livecomment := range livecomments {
+				totalTip += livecomment.Tip
+				totalLivecomments++
+			}
+		}
+
+		// 合計視聴者数
+		var viewersCount int64
+		for _, livestream := range livestreams {
+			var cnt int64
+			if err := tx.GetContext(ctx, &cnt, "SELECT COUNT(*) FROM livestream_viewers_history WHERE livestream_id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestream_view_history: "+err.Error())
+			}
+			viewersCount += cnt
+		}
+
+		if statmodels.ReactionsTotal != totalReactions ||
+			statmodels.Comments != totalLivecomments ||
+			statmodels.Tips != totalTip ||
+			statmodels.Viewers != viewersCount {
+			fmt.Printf("!!!!!!!!!!!!!!!!!NOT MATCH!!!!!!!!!!!!!!! (%d,%d) (%d,%d) (%d,%d) (%d,%d)",
+				statmodels.ReactionsTotal, totalReactions,
+				statmodels.Comments, totalLivecomments,
+				statmodels.Tips, totalTip,
+				statmodels.Viewers, viewersCount,
+			)
+		}
+	}
+	//////////////////////////////////////////////////
 
 	// お気に入り絵文字のためのクエリ文字列
 	var query string
